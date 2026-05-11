@@ -1266,7 +1266,7 @@ class SimBinary:
         
         ax1, ax2 = axs
         
-        ax1.set_title('Orbit motion')
+        ax1.set_title('Orbital motion')
         ax1.plot(dataOrb['ra1'], dataOrb['dec1'], label=label1, color = 'pink', lw = lw, zorder=1)
         ax1.plot(dataOrb['ra2'], dataOrb['dec2'], label=label2, color = 'lightskyblue', zorder=2)
         ax1.plot(dataOrb['ra_ph'], dataOrb['dec_ph'], label='Photocentre', color = maincolor, zorder=3)
@@ -1282,7 +1282,7 @@ class SimBinary:
         ra_shift1, dec_shift1 = np.mean(dataSky['ra_ss_plx']), np.mean(dataSky['dec_ss_plx'])
         ra_shift2, dec_shift2 = np.mean(dataSky['ra_bs_plx']), np.mean(dataSky['dec_bs_plx'])
         
-        ax2.set_title('On-sky (orbit + proper + parallax motions)')
+        ax2.set_title('On-sky (orbital + proper + parallax motions)')
         ax2.plot(dataSky['ra_ss_plx']-ra_shift1, dataSky['dec_ss_plx']-dec_shift1, 
                     label='Single star model', color = 'blueviolet', zorder=1)
         ax2.plot(dataSky['ra_bs_plx']-ra_shift2, dataSky['dec_bs_plx']-dec_shift2, 
@@ -1340,7 +1340,7 @@ class SimBinary:
             fig.savefig(plot_dir+f'astrometry_gaia_{self.ObjectName}_DR{str(self.DataRelease)}.png', 
                         dpi=300, bbox_inches="tight", transparent=False)
             
-        return axs
+        return fig, axs
         
     def PlotCepheid(self, plot_dir= None, Npoints=500):
         """
@@ -1409,7 +1409,7 @@ class SimBinary:
         timesPuls = np.linspace(-Ppuls, Ppuls, Npoints)
         dataPuls = self.FluxRatio(timesPuls, Tplot = Tplot)
 
-        ax1.set_title('Pulsation')
+        ax1.set_title('Phtotmetric variation')
         ax1.plot(timesPuls, dataPuls['puls'], color = 'pink', lw = 3)
         ax1.set_xlabel('Time [day]')
         ax1.set_ylabel('Gmag [mag]')
@@ -1427,7 +1427,7 @@ class SimBinary:
         x_poly = np.concatenate([ra_min, ra_max[::-1]])
         y_poly = np.concatenate([dec_min, dec_max[::-1]])
         
-        ax2.set_title('Orbit motion')
+        ax2.set_title('Orbital motion')
         ax2.fill(x_poly, y_poly, alpha=0.2, color = maincolor, label = 'VIM zone', lw=0, zorder=2.5)
         ax2.plot(dataOrb['ra1'], dataOrb['dec1'], label=label1, color = 'pink', zorder=1)
         ax2.plot(dataOrb['ra2'], dataOrb['dec2'], label=label2, color = 'lightskyblue', zorder=2)
@@ -1473,7 +1473,7 @@ class SimBinary:
         if self.ObjectType == 'AGB':
             label_sys = 'Binary system with AGB'
         
-        ax3.set_title('On-sky (orbit + proper + parallax motions)')
+        ax3.set_title('On-sky (orbital + proper + parallax motions)')
         ax3.plot(dataSky['ra_ss_plx']-ra_shift1, dataSky['dec_ss_plx']-dec_shift1, 
                     label='Single star model', color = 'plum', zorder=1)
         ax3.plot(dataSky['ra_nps_plx']-ra_shift2, dataSky['dec_nps_plx']-dec_shift2, 
@@ -1560,7 +1560,7 @@ class SimBinary:
         timesPuls = np.linspace(-Ppuls, Ppuls, Npoints)
         dataPuls = self.FluxRatio(timesPuls, Tplot = Tplot)
 
-        ax1.set_title('Pulsation')
+        ax1.set_title('Phtotmetric variation')
         ax1.plot(timesPuls, dataPuls['puls'], color = 'pink', lw = 3)
         ax1.set_xlabel('Time [day]')
         ax1.set_ylabel('Gmag [mag]')
@@ -1578,7 +1578,7 @@ class SimBinary:
         x_poly = np.concatenate([ra_min, ra_max[::-1]])
         y_poly = np.concatenate([dec_min, dec_max[::-1]])
         
-        ax2.set_title('Orbit motion')
+        ax2.set_title('Orbital motion')
         ax2.fill(x_poly, y_poly, alpha=0.2, color = 'black', label = 'VIM zone', lw=0, zorder=2.5)
         ax2.plot(dataOrb['ra1'], dataOrb['dec1'], label=label1, color = 'pink', zorder=1)
         ax2.plot(dataOrb['ra2'], dataOrb['dec2'], label=label2, color = 'lightskyblue', zorder=2)
@@ -1620,7 +1620,7 @@ class SimBinary:
         dec_min = dataMin['dec_bs_plx']-dec_shift2
         dec_max = dataMax['dec_bs_plx']-dec_shift2
         
-        ax3.set_title('On-sky (orbit + proper + parallax motions)')
+        ax3.set_title('On-sky (orbital + proper + parallax motions)')
         ax3.plot(dataSky['ra_ss_plx']-ra_shift1, dataSky['dec_ss_plx']-dec_shift1, 
                     label='Single star model', color = 'plum', zorder=1)
         ax3.plot(dataSky['ra_nps_plx']-ra_shift2, dataSky['dec_nps_plx']-dec_shift2, 
