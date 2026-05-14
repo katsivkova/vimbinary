@@ -182,7 +182,6 @@ class SimBinary:
              'T0puls': {'required': False,'type': (float, int, np.floating)},
              'Vmax':   {'required': False,'type': (float, int, np.floating)},
              'Vmin':   {'required': False,'type': (float, int, np.floating)},
-             'Vmain':  {'required': False,'type': (float, int, np.floating)},
              'Vtot':   {'required': False,'type': (float, int, np.floating)},
              'Vcomp':  {'required': False,'type': (float, int, np.floating)},
              'fratio': {'required': False,'type': (float, int, np.floating)},
@@ -664,7 +663,7 @@ class SimBinary:
         phis = cepheid_data['fund_freq1_harmonic_phase_g'][0][:N].compressed()
         # f1 = cepheid_data['fund_freq1'].data[0]
         T0 = cepheid_data['reference_time_g'].data[0]
-        T0 = T0 + Time(2016,format='decimalyear').jd # converting T0 to jd, 2016 DR3 ref
+        T0 = T0 + Time(2010,format='decimalyear').jd # converting T0 to jd, 2016 DR3 ref
         T0 = T0 - self.Tref.jd # converting T0 with a correct time reference
         P = cepheid_data['pf'].data[0]
         if np.ma.is_masked(P): # if no "pf" use "p1_o" (sometimes it's missing)
@@ -1226,12 +1225,12 @@ class SimBinary:
         self.has_convection = False
                 
         Period = self.ObjectParameters['P']
-        timesOrb = np.linspace(-Period/2, Period/2, Npoints)
+        timesOrb = np.linspace(-Period/2, Period/2, Npoints) 
         dataOrb = self.SimPlot(timesOrb)
         
         self.has_convection = has_convection
         
-        timesSky = np.linspace(np.min(self.reltimes), np.max(self.reltimes), Npoints)
+        timesSky = np.linspace(np.min(self.reltimes), np.max(self.reltimes), Npoints) 
         dataSky = self.SimPlot(timesSky)
                 
         self.perturbation = perturbation
@@ -1340,7 +1339,7 @@ class SimBinary:
             fig.savefig(plot_dir+f'astrometry_gaia_{self.ObjectName}_DR{str(self.DataRelease)}.png', 
                         dpi=300, bbox_inches="tight", transparent=False)
             
-        return fig, axs
+        return axs
         
     def PlotCepheid(self, plot_dir= None, Npoints=500):
         """
@@ -1409,7 +1408,7 @@ class SimBinary:
         timesPuls = np.linspace(-Ppuls, Ppuls, Npoints)
         dataPuls = self.FluxRatio(timesPuls, Tplot = Tplot)
 
-        ax1.set_title('Phtotmetric variation')
+        ax1.set_title('Photometric variation')
         ax1.plot(timesPuls, dataPuls['puls'], color = 'pink', lw = 3)
         ax1.set_xlabel('Time [day]')
         ax1.set_ylabel('Gmag [mag]')
@@ -1532,10 +1531,15 @@ class SimBinary:
             perturbation = self.perturbation
         else:
             perturbation =  None
+            
+        has_convection = self.has_convection
+        self.has_convection = False
                 
         Period = self.ObjectParameters['P']
         timesOrb = np.linspace(-Period/2, Period/2, Npoints)
         dataOrb = self.SimPlot(timesOrb)
+        
+        self.has_convection = has_convection
         
         timesSky = np.linspace(np.min(self.reltimes), np.max(self.reltimes), Npoints)
         dataSky = self.SimPlot(timesSky)
@@ -1560,7 +1564,7 @@ class SimBinary:
         timesPuls = np.linspace(-Ppuls, Ppuls, Npoints)
         dataPuls = self.FluxRatio(timesPuls, Tplot = Tplot)
 
-        ax1.set_title('Phtotmetric variation')
+        ax1.set_title('Photometric variation')
         ax1.plot(timesPuls, dataPuls['puls'], color = 'pink', lw = 3)
         ax1.set_xlabel('Time [day]')
         ax1.set_ylabel('Gmag [mag]')
@@ -1582,7 +1586,7 @@ class SimBinary:
         ax2.fill(x_poly, y_poly, alpha=0.2, color = 'black', label = 'VIM zone', lw=0, zorder=2.5)
         ax2.plot(dataOrb['ra1'], dataOrb['dec1'], label=label1, color = 'pink', zorder=1)
         ax2.plot(dataOrb['ra2'], dataOrb['dec2'], label=label2, color = 'lightskyblue', zorder=2)
-        ax2.plot(dataOrb['ra_ph_nps'], dataOrb['dec_ph_nps'], label='Mean photocentre', color = 'black', zorder=3)
+        # ax2.plot(dataOrb['ra_ph_nps'], dataOrb['dec_ph_nps'], label='Mean photocentre', color = 'black', zorder=3)
         
         ax2.scatter(self.Data['ra1'], self.Data['dec1'], color = 'pink', zorder=1, s=5)
         ax2.scatter(self.Data['ra2'], self.Data['dec2'], color = 'lightskyblue', zorder=2, s=5)
@@ -1593,6 +1597,8 @@ class SimBinary:
         ax2.set_ylabel(r'$\Delta \delta$ [mas]')
         ax2.set_aspect('equal', adjustable='datalim')
         ax2.legend()
+        
+        ax2.scatter(0,0, marker='x', color='black', s=15, alpha=0.7)
         
         # Sky
         
