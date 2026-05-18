@@ -1723,7 +1723,7 @@ class SimBinary:
                         dpi=300, bbox_inches="tight")
             
         return axs
-    def fitSS(self, w_bs=None):
+    def fitSS(self, w_bs=None, mask=None):
         """
         Fits Single-Star model to given array.
         Parameters
@@ -1737,13 +1737,18 @@ class SimBinary:
         
         if w_bs is None:
             w_bs = self.w_bs
+            
+        if mask is None:
+            mask = [True]*len(w_bs)
+            
+        w_bs = w_bs[mask]
         
         mA = np.array([
-            np.sin(self.scanAngleRAD),                # alpha0
-            self.reltimes*np.sin(self.scanAngleRAD),  # pmra
-            np.cos(self.scanAngleRAD),                # delta0
-            self.reltimes*np.cos(self.scanAngleRAD),  # pmdec
-            self.plxFactorAL                          # parallax
+            np.sin(self.scanAngleRAD[mask]),                # alpha0
+            self.reltimes[mask]*np.sin(self.scanAngleRAD[mask]),  # pmra
+            np.cos(self.scanAngleRAD[mask]),                # delta0
+            self.reltimes[mask]*np.cos(self.scanAngleRAD[mask]),  # pmdec
+            self.plxFactorAL[mask]                          # parallax
             ]).T
         werr = np.array(len(w_bs)*[self.errALCCD(self.ObjectGmag)])
         Cinv = np.diag(1/werr**2)
@@ -1756,17 +1761,23 @@ class SimBinary:
         F = mA.T @ Cinv @ mA
         Cov_p = np.linalg.inv(F)
         errors = np.sqrt(np.diag(Cov_p))
-        errors = errors * chi2r
+        errors = errors * np.sqrt(chi2r)
+        
+        p_fit[1]=p_fit[1]*365.25
+        p_fit[3]=p_fit[3]*365.25
+        errors[1]=errors[1]*365.25
+        errors[3]=errors[3]*365.25
         
         labels = ['a0', 'pmra', 'd0', 'pmdec', 'plx']
+        units = ['mas', 'mas/yr', 'mas', 'mas/yr', 'mas']
         
-        for p, e, l in zip(p_fit, errors, labels):
+        for p, e, l, un in zip(p_fit, errors, labels, units):
             
-            print(l, np.round(p,4), '\u00B1', np.round(e,4))
+            print(l, np.round(p,4), '\u00B1', np.round(e,4), un)
         
-        return p_fit, errors, w_fit
+        return p_fit, errors, w_fit, chi2r
     
-    def fitVIMF(self, w_bs=None):
+    def fitVIMF(self, w_bs=None, mask=None):
         """
         Fits Variability-Induced Mover Fixed model to given array.
         Parameters
@@ -1781,25 +1792,51 @@ class SimBinary:
         if w_bs is None:
             w_bs = self.w_bs
             
-        flux = self.FluxData['f_tot']
+        if mask is None:
+            mask = [True]*len(w_bs)
+            
+        w_bs = w_bs[mask]
+            
+        flux = self.FluxData['f_tot'][mask]
         fref = np.mean(flux)
         werr = np.array(len(w_bs)*[self.errALCCD(self.ObjectGmag)])
         
         mA = np.array([
-            np.sin(self.scanAngleRAD),                # alpha0
-            self.reltimes*np.sin(self.scanAngleRAD),  # pmra
-            np.cos(self.scanAngleRAD),                # delta0
-            self.reltimes*np.cos(self.scanAngleRAD),  # pmdec
-            self.plxFactorAL,                         # parallax
-            (fref/flux-1)*np.sin(self.scanAngleRAD),  # Da
-            (fref/flux-1)*np.cos(self.scanAngleRAD),  # Dd
+            np.sin(self.scanAngleRAD[mask]),                # alpha0
+            self.reltimes[mask]*np.sin(self.scanAngleRAD[mask]),  # pmra
+            np.cos(self.scanAngleRAD[mask]),                # delta0
+            self.reltimes[mask]*np.cos(self.scanAngleRAD[mask]),  # pmdec
+            self.plxFactorAL[mask],                         # parallax
+            (fref/flux-1)*np.sin(self.scanAngleRAD[mask]),  # Da
+            (fref/flux-1)*np.cos(self.scanAngleRAD[mask]),  # Dd
             ]).T
         Cinv = np.diag(1/werr**2)
-        mu = np.linalg.solve(mA.T @ Cinv @ mA, mA.T @ Cinv @ w_bs)
-        w_fit = np.dot(mA, mu)
-        return w_fit, mu
+        p_fit = np.linalg.solve(mA.T @ Cinv @ mA, mA.T @ Cinv @ w_bs)
+        w_fit = np.dot(mA, p_fit)
+        
+        chi2r = np.sum(((w_bs-w_fit)/werr)**2)/(len(w_fit)-7)
+        print('chi2r', np.round(chi2r, 3))
+        
+        F = mA.T @ Cinv @ mA
+        Cov_p = np.linalg.inv(F)
+        errors = np.sqrt(np.diag(Cov_p))
+        errors = errors * np.sqrt(chi2r)
+        
+        p_fit[1]=p_fit[1]*365.25
+        p_fit[3]=p_fit[3]*365.25
+        errors[1]=errors[1]*365.25
+        errors[3]=errors[3]*365.25
+        
+        labels = ['a0', 'pmra', 'd0', 'pmdec', 'plx', 'Da', 'Dd']
+        units = ['mas', 'mas/yr', 'mas', 'mas/yr', 'mas', 'mas', 'mas']
+        
+        for p, e, l, un in zip(p_fit, errors, labels, units):
+            
+            print(l, np.round(p,4), '\u00B1', np.round(e,4), un)
+        
+        return p_fit, errors, w_fit, chi2r
     
-    def fitVIML(self, w_bs=None):
+    def fitVIML(self, w_bs=None, mask=None):
         """
         Fits Variability-Induced Mover Linear model to given array.
         Parameters
@@ -1814,27 +1851,60 @@ class SimBinary:
         if w_bs is None:
             w_bs = self.w_bs
             
-        flux = self.FluxData['f_tot']
+        if mask is None:
+            mask = [True]*len(w_bs)
+            
+        w_bs = w_bs[mask]
+            
+        flux = self.FluxData['f_tot'][mask]
         fref = np.mean(flux)
         werr = np.array(len(w_bs)*[self.errALCCD(self.ObjectGmag)])
         
         mA = np.array([
-            np.sin(self.scanAngleRAD),                             # alpha0
-            self.reltimes*np.sin(self.scanAngleRAD),               # pmra
-            np.cos(self.scanAngleRAD),                             # delta0
-            self.reltimes*np.cos(self.scanAngleRAD),               # pmdec
-            self.plxFactorAL,                                       # parallax
-            (fref/flux-1)*np.sin(self.scanAngleRAD),               # Da
-            (fref/flux-1)*self.reltimes*np.sin(self.scanAngleRAD), # Dat
-            (fref/flux-1)*np.cos(self.scanAngleRAD),               # Dd
-            (fref/flux-1)*self.reltimes*np.cos(self.scanAngleRAD)  # Ddt
+            np.sin(self.scanAngleRAD[mask]),                             # alpha0
+            self.reltimes[mask]*np.sin(self.scanAngleRAD[mask]),               # pmra
+            np.cos(self.scanAngleRAD[mask]),                             # delta0
+            self.reltimes[mask]*np.cos(self.scanAngleRAD[mask]),               # pmdec
+            self.plxFactorAL[mask],                                       # parallax
+            (fref/flux-1)*np.sin(self.scanAngleRAD[mask]),               # Da
+            (fref/flux-1)*self.reltimes[mask]*np.sin(self.scanAngleRAD[mask]), # Dat
+            (fref/flux-1)*np.cos(self.scanAngleRAD[mask]),               # Dd
+            (fref/flux-1)*self.reltimes[mask]*np.cos(self.scanAngleRAD[mask])  # Ddt
             ]).T
         Cinv = np.diag(1/werr**2)
-        mu = np.linalg.solve(mA.T @ Cinv @ mA, mA.T @ Cinv @ w_bs)
-        w_fit = np.dot(mA, mu)
-        return w_fit, mu
+        print(np.linalg.matrix_rank(mA))
+        print(mA.shape)
+        print(np.linalg.cond(mA.T @ Cinv @ mA))
+        p_fit = np.linalg.solve(mA.T @ Cinv @ mA, mA.T @ Cinv @ w_bs)
+        w_fit = np.dot(mA, p_fit)
+        
+        chi2r = np.sum(((w_bs-w_fit)/werr)**2)/(len(w_fit)-9)
+        print('chi2r', np.round(chi2r, 3))
+        
+        F = mA.T @ Cinv @ mA
+        Cov_p = np.linalg.inv(F)
+        errors = np.sqrt(np.diag(Cov_p))
+        errors = errors * np.sqrt(chi2r)
+        
+        p_fit[1]=p_fit[1]*365.25
+        p_fit[3]=p_fit[3]*365.25
+        p_fit[6]=p_fit[6]*365.25
+        p_fit[8]=p_fit[8]*365.25
+        errors[1]=errors[1]*365.25
+        errors[3]=errors[3]*365.25
+        errors[6]=errors[6]*365.25
+        errors[8]=errors[8]*365.25
+        
+        labels = ['a0', 'pmra', 'd0', 'pmdec', 'plx', 'Da', 'Dat', 'Dd', 'Ddt']
+        units = ['mas', 'mas/yr', 'mas', 'mas/yr', 'mas', 'mas', 'mas/t', 'mas', 'mas/t']
+        
+        for p, e, l, un in zip(p_fit, errors, labels, units):
+            
+            print(l, np.round(p,4), '\u00B1', np.round(e,4), un)
+        
+        return p_fit, errors, w_fit, chi2r
 
-    def VIMA(self, parameters):
+    def VIMA(self, parameters, mask=None):
         """
         Defines the VIMA model
         Parameters
@@ -1845,10 +1915,15 @@ class SimBinary:
         -------
         fitter parameters, their errors, and fitted along-scan positions array.
         """
+        
             
         flux = self.FluxData['f_tot']
-        fref = np.mean(flux)
         
+        if mask is None:
+            mask = [True]*len(flux)
+        
+        flux = flux[mask]
+        fref = np.mean(flux)
     
         alpha0, pmra, delta0, pmdec, parallax, Da, Dd, Dat, Ddt, k, s = parameters
     
@@ -1861,26 +1936,26 @@ class SimBinary:
         factor = (fref/flux - 1)
     
         w_fit = (
-            alpha0*np.sin(self.scanAngleRAD)                       # a0
-            + pmra*self.reltimes*np.sin(self.scanAngleRAD)         # pmra
-            + 0.5*dpmra*self.reltimes**2*np.sin(self.scanAngleRAD) # proper acceleration ra
-            + delta0*np.cos(self.scanAngleRAD)                     # d0
-            + pmdec*self.reltimes*np.cos(self.scanAngleRAD)        # pmdec
-            + 0.5*dpmdec*self.reltimes**2*np.cos(self.scanAngleRAD)# proper acceleration dec
-            + parallax*self.plxFactorAL                            # plx
+            alpha0*np.sin(self.scanAngleRAD[mask])                       # a0
+            + pmra*self.reltimes[mask]*np.sin(self.scanAngleRAD[mask])         # pmra
+            + 0.5*dpmra*self.reltimes[mask]**2*np.sin(self.scanAngleRAD[mask]) # proper acceleration ra
+            + delta0*np.cos(self.scanAngleRAD[mask])                     # d0
+            + pmdec*self.reltimes[mask]*np.cos(self.scanAngleRAD[mask])        # pmdec
+            + 0.5*dpmdec*self.reltimes[mask]**2*np.cos(self.scanAngleRAD[mask])# proper acceleration dec
+            + parallax*self.plxFactorAL[mask]                            # plx
             + factor*(
-                Da*np.sin(self.scanAngleRAD)                          # Da
-                + Dat*self.reltimes*np.sin(self.scanAngleRAD)         # Da'
-                + 0.5*dDat*self.reltimes**2*np.sin(self.scanAngleRAD) # Da"
-                + Dd*np.cos(self.scanAngleRAD)                        # Dd
-                + Ddt*self.reltimes*np.cos(self.scanAngleRAD)         # Dd'
-                + 0.5*dDdt*self.reltimes**2*np.cos(self.scanAngleRAD) # Dd"
+                Da*np.sin(self.scanAngleRAD[mask])                          # Da
+                + Dat*self.reltimes[mask]*np.sin(self.scanAngleRAD[mask])         # Da'
+                + 0.5*dDat*self.reltimes[mask]**2*np.sin(self.scanAngleRAD[mask]) # Da"
+                + Dd*np.cos(self.scanAngleRAD[mask])                        # Dd
+                + Ddt*self.reltimes[mask]*np.cos(self.scanAngleRAD[mask])         # Dd'
+                + 0.5*dDdt*self.reltimes[mask]**2*np.cos(self.scanAngleRAD[mask]) # Dd"
             )
         )
     
         return w_fit
     
-    def fitVIMA(self, parameters0, w_bs=None):
+    def fitVIMA(self, parameters0, w_bs=None, mask=None):
         """
         Fits Variability-Induced Mover Accelerated model to given array.
         Parameters
@@ -1895,25 +1970,49 @@ class SimBinary:
         
         if w_bs is None:
             w_bs = self.w_bs
+        
+        if mask is None:
+            mask = [True]*len(w_bs)
+            
+        w_bs = w_bs[mask]
             
         werr = np.array(len(w_bs)*[self.errALCCD(self.ObjectGmag)])
         
         def residulas(params):
-            w_fit = self.VIMA(params)
+            w_fit = self.VIMA(params, mask)
             return (w_bs - w_fit) / werr
         
         res_lsq = least_squares(residulas, parameters0)
-        w_fitA = self.VIMA(res_lsq.x)
+        w_fitA = self.VIMA(res_lsq.x, mask)
         
-        a0A, pmraA, dA, pmdecA, plxA, DaA, DdA, DatA, DdtA, kA, sA = res_lsq.x
+        a0A, pmraA, d0A, pmdecA, plxA, DaA, DdA, DatA, DdtA, kA, sA = res_lsq.x
 
         dDatA = -kA * DdA
         dDdtA =  kA * DaA
 
         dpmraA  = sA * dDatA
         dpmdecA = sA * dDdtA
-
-        p_fitA = [a0A, pmraA, dA, pmdecA, plxA, DaA, DdA, DatA, DdtA, dDatA, dDdtA, dpmraA, dpmdecA]
         
-        return w_fitA, p_fitA
+        chi2r = np.sum(((w_bs-w_fitA)/werr)**2)/(len(w_fitA)-11)
+        print('chi2r', np.round(chi2r, 3))
+
+        p_fitA = [a0A, pmraA, d0A, pmdecA, plxA, DaA, DdA, DatA, DdtA, kA, sA, dDatA, dDdtA, dpmraA, dpmdecA]
+
+        p_fitA[1]=p_fitA[1]*365.25
+        p_fitA[3]=p_fitA[3]*365.25
+        p_fitA[7]=p_fitA[7]*365.25
+        p_fitA[8]=p_fitA[8]*365.25
+        p_fitA[11]=p_fitA[11]*365.25**2
+        p_fitA[12]=p_fitA[12]*365.25**2
+        p_fitA[13]=p_fitA[13]*365.25**2
+        p_fitA[14]=p_fitA[14]*365.25**2
+        
+        labels = ['a0', 'pmra', 'd0', 'pmdec', 'plx', 'Da', 'Dd', 'Dat', 'Ddt', 'k', 's','dDat', 'dDdt', 'dpmra', 'dpmdec']
+        units = ['mas', 'mas/yr', 'mas', 'mas/yr', 'mas', 'mas', 'mas', 'mas/t', 'mas/t', '', '', 'mas/t^2', 'mas/t^2', 'mas/t^2', 'mas/t^2']
+        
+        for p, l, un in zip(p_fitA, labels, units):
+            
+            print(l, np.round(p,4), un)
+        
+        return p_fitA, w_fitA, chi2r
         
