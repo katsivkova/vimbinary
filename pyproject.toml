@@ -3,13 +3,13 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["simbinary"]
+include = ["vimbinary"]
 
 [tool.setuptools.dynamic]
-version = {attr='simbinary.__version__'}
+version = {attr='vimbinary.__version__'}
 
 [project]
-name = "simbinary"
+name = "vimbinary"
 dynamic = ["version"]
 readme = {file="README.md", content-type="text/markdown"}
 license = {file="LICENCE.txt"}

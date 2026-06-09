@@ -39,11 +39,22 @@ class fitGaia:
             parallax_factor_al scan_pos_angle outlier_flag'.split()
         self.gaiaastro = pd.read_csv(filename_gaia_astro, delim_whitespace=True, names=columns, comment='#')
         
+        # Convenience: precompute scan-angle projection terms
+        psi = np.deg2rad(self.gaiaastro["scan_pos_angle"].to_numpy())
+        self.gaiaastro["spsi_obs"] = np.sin(psi)
+        self.gaiaastro["cpsi_obs"] = np.cos(psi)
+        
     def load_dataframe(self, dataframe):
         columns = 'transitid ccd_id obs_time_tcb centroid_pos_al centroid_pos_error_al \
             parallax_factor_al scan_pos_angle outlier_flag'.split()
-        dataframe.columns = columns
-        self.gaiaastro = dataframe
+        df = dataframe.copy()          # <-- IMPORTANT: copy()
+        df.columns = columns
+        self.gaiaastro = df
+        
+        # Convenience: precompute scan-angle projection terms
+        psi = np.deg2rad(self.gaiaastro["scan_pos_angle"].to_numpy())
+        self.gaiaastro["spsi_obs"] = np.sin(psi)
+        self.gaiaastro["cpsi_obs"] = np.cos(psi)
         
     def fit_kepmodel(self, data_dir=None):
         
@@ -109,7 +120,7 @@ class fitGaia:
         
         # print(chi2r_ss*plx1_err)
         
-        print('chi2r ss', chi2r_ss)
+        print('chi2r ss', chi2r_ss**2)
         
         model = copy.deepcopy(single_star_model)
 
@@ -147,7 +158,7 @@ class fitGaia:
         for i, key in enumerate(keplerian_model._lin_name):
             linear_parameters[key] = keplerian_model._lin_par[i]
             
-        chi2r_bs = keplerian_model.chi2()/(len(gaia_astrometry['da_mas'])-12)
+        chi2r_bs = np.sqrt(keplerian_model.chi2()/(len(gaia_astrometry['da_mas'])-12))
         plx2 = params[0][2]
         plx2_err = params[1][2] *chi2r_bs
         pmra2 = params[0][3]
@@ -156,7 +167,7 @@ class fitGaia:
         pmdec2_err = params[1][4] *chi2r_bs
         
         # print(chi2r_bs*plx2_err)
-        print('chi2r bs', chi2r_bs)
+        print('chi2r bs', chi2r_bs**2)
         
         keplerian_parameters = {'a': keplerian_parameters['as'], 
                    'i': np.rad2deg(keplerian_parameters['i']), 
@@ -190,3 +201,8 @@ class fitGaia:
         self.linear_parameters = linear_parameters
         
         return keplerian_parameters
+    
+    def _asymmetric_sine(self, x, Gamma):
+        if np.isclose(Gamma, 0.0):
+            return np.sin(x)
+        return (1.0/Gamma) * np.arctan2(Gamma*np.sin(x), 1.0 - Gamma*np.cos(x))

@@ -1,6 +1,6 @@
 ## Introduction
 
-`simbinary` is a Python package to simulate Gaia epoch astrometry for binary systems, with a particular focus on Variable-Induced Mover (VIM) sources.
+`vimbinary` is a Python package to simulate Gaia epoch astrometry for binary systems, with a particular focus on Variable-Induced Mover (VIM) sources.
 
 The package contains two main modules:
 
@@ -12,13 +12,13 @@ The package contains two main modules:
 ### Install directly from GitHub
 
 ```bash
-pip install git+https://github.com/katsivkova/simbinary
+pip install git+https://github.com/katsivkova/vimbinary
 ```
 
 ### Install in editable mode (for development)
 
 ```
-git clone https://github.com/katsivkova/simbinary 
+git clone https://github.com/katsivkova/vimbinary 
 cd simbinary
 pip install -e .
 ```

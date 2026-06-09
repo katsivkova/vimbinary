@@ -629,7 +629,7 @@ class SimBinary:
         
         # binary system without the pulsating component, non-pulsating system (nps)
         # f_mean = np.mean([f_max, f_min])
-        f_mean = 10**(-0.4*(Vref-Vmax))*np.ones(len(puls))
+        f_mean = np.mean(f_ceph)*np.ones(len(puls))
         # f_mean = np.mean(f_ceph)
         r1_nps = f_mean/(f_comp+f_mean) # cepheid
         r2_nps = f_comp/(f_comp+f_mean) # companion
@@ -1011,19 +1011,24 @@ class SimBinary:
             
             data['ra1'], data['dec1'] = data['ra1'] + ra_c, data['dec1'] + dec_c
         
-        
-        if self.ObjectType != 'BH' or self.ObjectType == 'exoplanet':
-            a_ph = (self.ObjectParameters['q']/(1+self.ObjectParameters['q'])*np.mean(fdata['r1']) -\
-                    1/(1+self.ObjectParameters['q'])*np.mean(fdata['r2']))*self.ObjectParameters['a']
-            self.params_ph = {'a': a_ph, 
-                       'i': self.ObjectParameters['i'], 
-                       'Omega': self.ObjectParameters['Omega'], 
-                       'e':self.ObjectParameters['e'],
-                       'w':(self.ObjectParameters['w']+180), 
-                       'T0': ((self.ObjectParameters['T0']-self.Tref.jd)*u.day).value, 
-                       'P':self.ObjectParameters['P']}
-        else:
-            self.params_ph = params1
+        if np.all(times is self.reltimes):
+            if self.ObjectType != 'BH' or self.ObjectType != 'exoplanet':
+                if self.has_pulsation:
+                    a_ph = (self.ObjectParameters['q']/(1+self.ObjectParameters['q'])*np.mean(fdata['r1_nps']) -\
+                            1/(1+self.ObjectParameters['q'])*np.mean(fdata['r2_nps']))*self.ObjectParameters['a']
+                else:
+                    a_ph = (self.ObjectParameters['q']/(1+self.ObjectParameters['q'])*np.mean(fdata['r1']) -\
+                            1/(1+self.ObjectParameters['q'])*np.mean(fdata['r2']))*self.ObjectParameters['a']
+                
+                self.params_ph = {'a': a_ph, 
+                           'i': self.ObjectParameters['i'], 
+                           'Omega': self.ObjectParameters['Omega'], 
+                           'e':self.ObjectParameters['e'],
+                           'w':(self.ObjectParameters['w']+180), 
+                           'T0': ((self.ObjectParameters['T0']-self.Tref.jd)*u.day).value, 
+                           'P':self.ObjectParameters['P']}
+            else:
+                self.params_ph = params1
             
         # photocenter position 
         data['ra_ph'] = data['ra1']*fdata['r1'].values + data['ra2']*fdata['r2'].values
@@ -1047,6 +1052,8 @@ class SimBinary:
                     1/(1+self.ObjectParameters['q'])*np.max(fdata['r2']))*self.ObjectParameters['a']
             self.a_ph_max = (self.ObjectParameters['q']/(1+self.ObjectParameters['q'])*np.max(fdata['r1']) -\
                     1/(1+self.ObjectParameters['q'])*np.min(fdata['r2']))*self.ObjectParameters['a']
+            self.a_ph_mean = (self.ObjectParameters['q']/(1+self.ObjectParameters['q'])*np.median(fdata['r1_nps']) -\
+                    1/(1+self.ObjectParameters['q'])*np.median(fdata['r2_nps']))*self.ObjectParameters['a']
         
         # adding projected parallax motion for visualisation
         data['ra_bs_plx'] = data['ra_bs']+plx*factra
@@ -1418,7 +1425,7 @@ class SimBinary:
         
         Period = self.ObjectParameters['P']
         
-        temp = self.params_ph
+        temp = copy.copy(self.params_ph)
         temp['a'] = self.a_ph_min
         ra_min, dec_min = self.orbit(temp, timesOrb)
         temp['a'] = self.a_ph_max
@@ -1462,6 +1469,8 @@ class SimBinary:
         dataMin = self.SimPlot(timesSky, fdataMin)
         dataMax = self.SimPlot(timesSky, fdataMax)
         self.has_pulsation = True
+        
+        self.params_ph['a'] =  self.a_ph_mean
         
         ra_min = dataMin['ra_bs_plx']-ra_shift2
         ra_max = dataMax['ra_bs_plx']-ra_shift2
@@ -1509,7 +1518,7 @@ class SimBinary:
                         dpi=300, bbox_inches="tight")
         return [ax1, ax2, ax3]
     
-    def PlotCepheidRow(self, plot_dir= None, Npoints=500):
+    def PlotCepheidRow(self, plot_dir= None, Npoints=500, a_mean=False):
         """
             Plots simulated data for VIM. Pulsation + Orbit + On-sky.
             Parameters
@@ -1574,7 +1583,7 @@ class SimBinary:
         
         Period = self.ObjectParameters['P']
         
-        temp = self.params_ph
+        temp = copy.copy(self.params_ph)
         temp['a'] = self.a_ph_min
         ra_min, dec_min = self.orbit(temp, timesOrb)
         temp['a'] = self.a_ph_max
@@ -1586,7 +1595,8 @@ class SimBinary:
         ax2.fill(x_poly, y_poly, alpha=0.2, color = 'black', label = 'VIM zone', lw=0, zorder=2.5)
         ax2.plot(dataOrb['ra1'], dataOrb['dec1'], label=label1, color = 'pink', zorder=1)
         ax2.plot(dataOrb['ra2'], dataOrb['dec2'], label=label2, color = 'lightskyblue', zorder=2)
-        # ax2.plot(dataOrb['ra_ph_nps'], dataOrb['dec_ph_nps'], label='Mean photocentre', color = 'black', zorder=3)
+        if a_mean:
+            ax2.plot(dataOrb['ra_ph_nps'], dataOrb['dec_ph_nps'], label='Mean photocentre', color = 'black', zorder=3)
         
         ax2.scatter(self.Data['ra1'], self.Data['dec1'], color = 'pink', zorder=1, s=5)
         ax2.scatter(self.Data['ra2'], self.Data['dec2'], color = 'lightskyblue', zorder=2, s=5)
@@ -1620,6 +1630,8 @@ class SimBinary:
         dataMin = self.SimPlot(timesSky, fdataMin)
         dataMax = self.SimPlot(timesSky, fdataMax)
         self.has_pulsation = True
+        
+        self.params_ph['a'] =  self.a_ph_mean
         
         ra_min = dataMin['ra_bs_plx']-ra_shift2
         ra_max = dataMax['ra_bs_plx']-ra_shift2
@@ -1661,6 +1673,7 @@ class SimBinary:
         if plot_dir is not None:
             fig.savefig(plot_dir+f'astrometry_gaia_cepheid_{self.ObjectName}_DR{str(self.DataRelease)}.png', 
                         dpi=300, bbox_inches="tight")
+            
         return [ax1, ax2, ax3]
     
     
